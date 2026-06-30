@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HamiTTS — Automatización de voz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-50 min-h-screen flex flex-col selection:bg-primary-500 selection:text-white">
+
+    <header class="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <img src="logo.png" alt="HamiTTS Logo" class="w-8 h-8 object-contain">
+                <div>
+                    <h1 class="font-bold text-lg leading-none tracking-tight">HamiTTS</h1>
+                    <span class="text-xs text-zinc-400">Herramienta independiente</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-6 text-sm font-medium">
+                <a href="https://www.youtube.com/@Ham44" target="_blank" class="group flex items-center gap-2 text-zinc-400 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 group-hover:text-[#FF0000] transition-colors fill-current" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                    <span class="hidden sm:inline">YouTube</span>
+                </a>
+                <a href="https://www.tiktok.com/@hamirblx" target="_blank" class="group flex items-center gap-2 text-zinc-400 hover:text-white transition-colors">
+                    <svg class="w-5 h-5 group-hover:text-white transition-colors fill-current" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a5.63 5.63 0 0 1-1.04-.1z"/></svg>
+                    <span class="hidden sm:inline">TikTok</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1">
+        <section class="container mx-auto px-4 py-24 flex flex-col items-center text-center max-w-3xl">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-sm font-medium text-zinc-300 mb-8">
+                <span class="relative flex h-2 w-2">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-500 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-primary-500"></span>
+                </span>
+                Automatización de voz portable y limpia!
+            </div>
+            
+            <div class="w-32 h-32 rounded-3xl shadow-2xl shadow-primary-500/20 bg-zinc-900 mb-8 flex items-center justify-center border border-zinc-800 p-4">
+                <img src="logo.png" alt="HamiTTS Logo" class="w-full h-full object-contain drop-shadow-lg">
+            </div>
+            
+            <h1 class="text-5xl sm:text-7xl font-extrabold tracking-tight mb-6 bg-gradient-to-br from-white to-zinc-500 bg-clip-text text-transparent">
+                HAMITTS
+            </h1>
+            
+            <p class="text-lg sm:text-xl text-zinc-400 mb-10 max-w-2xl leading-relaxed">
+                El configurador avanzado de automatización de voz para tus juegos (diseñado para usar en Roblox).
+            </p>
+            
+            <div class="flex flex-col sm:flex-row items-start justify-center gap-6 w-full sm:w-auto">
+                <div class="flex flex-col items-center gap-3 w-full sm:w-auto">
+                    <a href="https://www.mediafire.com/file/ao1s1c5d7t24vd4/HamiTTS.zip/file" target="_blank" class="w-full sm:w-auto px-8 py-4 bg-white text-zinc-950 hover:bg-zinc-200 font-bold rounded-xl text-lg transition-all flex items-center justify-center gap-3 shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]">
+                        <i data-lucide="download" class="w-5 h-5"></i>
+                        Descargar HamiTTS
+                    </a>
+                    <span class="text-sm text-zinc-500 flex items-center gap-1.5 font-medium">
+                        <i data-lucide="shield-check" class="w-4 h-4 text-primary-500"></i>
+                        Descarga segura disponible vía MediaFire
+                    </span>
+                </div>
+
+                <div class="flex flex-col items-center gap-3 w-full sm:w-auto">
+                    <a href="https://github.com/HamiHND/HamiTTS/tree/main?tab=readme-ov-file" target="_blank" class="w-full sm:w-auto px-8 py-4 bg-zinc-900 border border-zinc-700 text-white hover:bg-zinc-800 hover:border-zinc-600 font-bold rounded-xl text-lg transition-all flex items-center justify-center gap-3">
+                        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                        Ver código en GitHub
+                    </a>
+                    <span class="text-sm text-zinc-500 flex items-center gap-1.5 font-medium">
+                        <i data-lucide="code" class="w-4 h-4 text-primary-500"></i>
+                        HamiTTS es un programa de código abierto
+                    </span>
+                </div>
+            </div>
+        </section>
+
+        <section class="border-t border-zinc-800 bg-zinc-900/30 py-24">
+            <div class="container mx-auto px-4 max-w-4xl">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl font-bold mb-4 text-white">Guía de Instalación y Uso</h2>
+                    <p class="text-zinc-400 text-lg">Cinco pasos rápidos para dejar HamiTTS funcionando en tu chat de voz.</p>
+                </div>
+                
+                <div class="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-zinc-800 before:to-transparent">
+                    
+                    <div class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                        <div class="flex items-center justify-center w-10 h-10 rounded-full border-2 border-zinc-700 bg-zinc-950 text-zinc-300 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 font-bold text-lg z-10 relative">1</div>
+                        <div class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-6 rounded-2xl border border-zinc-800 bg-zinc-950/80 backdrop-blur shadow-xl hover:border-zinc-700 transition-colors">
+                            <h3 class="font-bold text-lg mb-2 text-white flex items-center gap-2">
+                                <span class="text-primary-500 text-sm font-black uppercase tracking-wider">Paso 1</span>
+                                Descargar, Extraer y Ejecutar
+                            </h3>
+                            <p class="text-zinc-400 leading-relaxed text-sm">Descarga el archivo comprimido de HamiTTS, extrae todo su contenido en una carpeta de tu PC y ejecuta por primera vez el archivo "HamiTTS.exe".</p>
+                        </div>
+                    </div>
+
+                    <div class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                        <div class="flex items-center justify-center w-10 h-10 rounded-full border-2 border-zinc-700 bg-zinc-950 text-zinc-300 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 font-bold text-lg z-10 relative">2</div>
+                        <div class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-6 rounded-2xl border border-zinc-800 bg-zinc-950/80 backdrop-blur shadow-xl hover:border-zinc-700 transition-colors">
+                            <h3 class="font-bold text-lg mb-2 text-white flex flex-col items-start gap-1">
+                                <span class="text-primary-500 text-sm font-black uppercase tracking-wider">Paso 2</span>
+                                Instalar Componentes Requeridos
+                            </h3>
+                            <p class="text-zinc-400 leading-relaxed text-sm">Para que el sistema automatizado funcione, es obligatorio instalar los dos complementos necesarios: AutoHotkey y el controlador VB-Audio Virtual Cable.</p>
+                        </div>
+                    </div>
+
+                    <div class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                        <div class="flex items-center justify-center w-10 h-10 rounded-full border-2 border-zinc-700 bg-zinc-950 text-zinc-300 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 font-bold text-lg z-10 relative">3</div>
+                        <div class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-6 rounded-2xl border border-zinc-800 bg-zinc-950/80 backdrop-blur shadow-xl hover:border-zinc-700 transition-colors">
+                            <h3 class="font-bold text-lg mb-2 text-white flex flex-col items-start gap-1">
+                                <span class="text-primary-500 text-sm font-black uppercase tracking-wider">Paso 3</span>
+                                Configurar el Audio del Sistema
+                            </h3>
+                            <p class="text-zinc-400 leading-relaxed text-sm">En la pestaña "Salida de Audio", presiona "Cambiar salida de audio" y sigue las instrucciones. Luego, en "Mezclador de volumen", cambia la salida de tu navegador de predeterminado a "CABLE Output" (mientras el navegador reproduce audio).</p>
+                        </div>
+                    </div>
+
+                    <div class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                        <div class="flex items-center justify-center w-10 h-10 rounded-full border-2 border-zinc-700 bg-zinc-950 text-zinc-300 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 font-bold text-lg z-10 relative">4</div>
+                        <div class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-6 rounded-2xl border border-zinc-800 bg-zinc-950/80 backdrop-blur shadow-xl hover:border-zinc-700 transition-colors">
+                            <h3 class="font-bold text-lg mb-2 text-white flex flex-col items-start gap-1">
+                                <span class="text-primary-500 text-sm font-black uppercase tracking-wider">Paso 4</span>
+                                Iniciar HamiTTS y Elegir Voz
+                            </h3>
+                            <p class="text-zinc-400 leading-relaxed text-sm">Selecciona tu navegador y distribución de teclado (Español/Inglés). Haz clic en "Aplicar e Iniciar", loguéate con Google en Fish Audio y elige tu voz de IA favorita en "Descubrimiento".</p>
+                        </div>
+                    </div>
+
+                    <div class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                        <div class="flex items-center justify-center w-10 h-10 rounded-full border-2 border-zinc-700 bg-zinc-950 text-zinc-300 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 font-bold text-lg z-10 relative">5</div>
+                        <div class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-6 rounded-2xl border border-zinc-800 bg-zinc-950/80 backdrop-blur shadow-xl hover:border-zinc-700 transition-colors">
+                            <h3 class="font-bold text-lg mb-2 text-white flex flex-col items-start gap-1">
+                                <span class="text-primary-500 text-sm font-black uppercase tracking-wider">Paso 5</span>
+                                Ajustar el Micrófono
+                            </h3>
+                            <p class="text-zinc-400 leading-relaxed text-sm">Entra a Roblox, ve a Configuración (Settings) y en la sección de audio cambia tu Dispositivo de Entrada (Input Device) a "CABLE Output (VB-Audio Virtual Cable)".</p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="mt-16 bg-primary-900/20 border border-primary-500/20 rounded-2xl p-8 text-center max-w-2xl mx-auto backdrop-blur-sm">
+                    <h3 class="text-2xl font-bold mb-4 text-white flex items-center justify-center gap-2">
+                        <i data-lucide="party-popper" class="w-6 h-6 text-primary-500"></i>
+                        ¡Hecho!
+                    </h3>
+                    <p class="text-zinc-300 leading-relaxed">Cada vez que presiones tu tecla de activación <kbd class="bg-zinc-800 px-2 py-1 rounded border border-zinc-700 text-white font-mono text-sm mx-1">(/)</kbd>, escribas en el chat de Roblox y presiones ENTER, tu texto se transformará mágicamente en voz de IA que todos podrán escuchar.</p>
+                </div>
+
+            </div>
+        </section>
+
+        <section class="border-t border-zinc-800 bg-zinc-950 py-24">
+            <div class="container mx-auto px-4 max-w-6xl">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl font-bold mb-4 text-white">Cosas que debes saber</h2>
+                    <p class="text-zinc-400 text-lg">Información clave para el correcto funcionamiento de HamiTTS.</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="bg-zinc-900/40 border border-zinc-800 p-6 rounded-2xl hover:border-zinc-700 transition-colors flex flex-col">
+                        <div class="w-12 h-12 rounded-full bg-primary-500/10 flex items-center justify-center mb-4 text-primary-500 shrink-0">
+                            <i data-lucide="keyboard" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-white mb-2">Activación del Bot en Roblox</h3>
+                        <p class="text-zinc-400 text-sm leading-relaxed">Para todas las PC, sin importar si tu teclado está en español o inglés, deberás de presionar la tecla con el símbolo <kbd class="bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-700 text-white font-mono text-xs mx-0.5">/</kbd> para chatear. Para mandar tu mensaje a Roblox y que el bot lo lea, lo correcto es presionar <strong>ENTER</strong> y no darle click al botón de enviar, esto porque el bot se activa al presionar "/" y después "ENTER".</p>
+                    </div>
+
+                    <div class="bg-zinc-900/40 border border-zinc-800 p-6 rounded-2xl hover:border-zinc-700 transition-colors flex flex-col">
+                        <div class="w-12 h-12 rounded-full bg-primary-500/10 flex items-center justify-center mb-4 text-primary-500 shrink-0">
+                            <i data-lucide="mic-off" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-white mb-2">Tu micrófono real no se oirá</h3>
+                        <p class="text-zinc-400 text-sm leading-relaxed">Tu micrófono no se escuchará, esto quiere decir que las personas solo escucharán las voces IA, esto debido a que configuramos para que Roblox solo escuche el navegador. Si quieres cambiar esto y que los demás escuchen tu voz real, deberás ir a las configuraciones de Roblox y en "Input device" cambiar la opción "Cable Output" a tu micrófono predeterminado.</p>
+                    </div>
+
+                    <div class="bg-zinc-900/40 border border-zinc-800 p-6 rounded-2xl hover:border-zinc-700 transition-colors flex flex-col">
+                        <div class="w-12 h-12 rounded-full bg-primary-500/10 flex items-center justify-center mb-4 text-primary-500 shrink-0">
+                            <i data-lucide="volume-2" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-white mb-2">Transmisión de tu navegador</h3>
+                        <p class="text-zinc-400 text-sm leading-relaxed">Este programa funciona escuchando tu navegador. Esto quiere decir que todo el audio que salga de tu navegador será mandado a Roblox (ya sea videos, audios o cualquier cosa). Si no quieres que las personas escuchen cosas privadas de tu navegador, asegúrate de apagar tu micrófono en Roblox para que nadie las pueda escuchar.</p>
+                    </div>
+
+                    <div class="bg-zinc-900/40 border border-zinc-800 p-6 rounded-2xl hover:border-zinc-700 transition-colors flex flex-col">
+                        <div class="w-12 h-12 rounded-full bg-primary-500/10 flex items-center justify-center mb-4 text-primary-500 shrink-0">
+                            <i data-lucide="coins" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-white mb-2">Tokens de Fish Audio</h3>
+                        <p class="text-zinc-400 text-sm leading-relaxed">Este programa funciona con una página llamada "Fish Audio". Al crear una cuenta, tendrás tokens limitados que se gastan cada vez que hablas en Roblox. Si se gastan, ya no podrás hablar y tendrás dos opciones: 1. Te creas una nueva cuenta para tener 8,000 tokens gratis. 2. Te compras el Plus de la página.</p>
+                    </div>
+
+                    <div class="bg-zinc-900/40 border border-zinc-800 p-6 rounded-2xl hover:border-zinc-700 transition-colors flex flex-col">
+                        <div class="w-12 h-12 rounded-full bg-primary-500/10 flex items-center justify-center mb-4 text-primary-500 shrink-0">
+                            <i data-lucide="power-off" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-white mb-2">Cerrar el programa</h3>
+                        <p class="text-zinc-400 text-sm leading-relaxed">Una vez que te hayas cansado de usar el programa y no quieras usarlo, para poder cerrarlo correctamente deberás de eliminar la tarea que quedó en segundo plano de AutoHotkey. La podrás reconocer fácilmente porque su logo es verde con una "H" blanca en medio en tu barra de tareas.</p>
+                    </div>
+
+                    <div class="bg-zinc-900/40 border border-zinc-800 p-6 rounded-2xl hover:border-zinc-700 transition-colors flex flex-col">
+                        <div class="w-12 h-12 rounded-full bg-primary-500/10 flex items-center justify-center mb-4 text-primary-500 shrink-0">
+                            <i data-lucide="play-circle" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-white mb-2">Volver a utilizar HamiTTS</h3>
+                        <p class="text-zinc-400 text-sm leading-relaxed">Si seguiste todos los pasos, y al momento de querer usar el programa de nuevo no sabes cómo, lo único que tendrás que hacer es escoger qué navegador usar y con qué tecla se activa tu chat de Roblox (ya sea con "/" o "-"), seguidamente, tocarás en "Aplicar e iniciar".</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-24 container mx-auto px-4 max-w-5xl">
+            <div class="text-center mb-16 max-w-3xl mx-auto">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-zinc-900 border border-zinc-800 mb-6 shadow-inner">
+                    <i data-lucide="shield-alert" class="w-8 h-8 text-yellow-500"></i>
+                </div>
+                <h2 class="text-3xl font-bold mb-6 text-white">Seguridad y Falsos Positivos en HamiTTS (VirusTotal)</h2>
+                <p class="text-zinc-400 text-lg leading-relaxed">
+                    Quiero ser totalmente transparente contigo. Si escaneas <code class="text-zinc-300 bg-zinc-900 px-2 py-1 rounded border border-zinc-800 font-mono text-sm">HamiTTS.exe</code> en VirusTotal puede que aparezcan hasta 3 alertas. Aquí te explico, sin tecnicismos, por qué ocurre y por qué el programa está 100% limpio.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                <div class="bg-zinc-900/40 border border-zinc-800 p-8 rounded-3xl hover:bg-zinc-900/60 transition-colors">
+                    <div class="text-5xl font-black text-zinc-800 mb-6">01</div>
+                    <h3 class="text-xl font-bold text-white mb-3">Verificación de los gigantes</h3>
+                    <p class="text-zinc-400 text-sm leading-relaxed">De los más de 70 motores antivirus que analiza VirusTotal, solo 3 motores menores o poco conocidos generan una alerta. Los líderes mundiales en seguridad como Microsoft Defender, Kaspersky, Avast y Bitdefender marcan el archivo completamente en VERDE (Seguro).</p>
+                </div>
+                <div class="bg-zinc-900/40 border border-zinc-800 p-8 rounded-3xl hover:bg-zinc-900/60 transition-colors">
+                    <div class="text-5xl font-black text-zinc-800 mb-6">02</div>
+                    <h3 class="text-xl font-bold text-white mb-3">El método de empaquetado (PyInstaller)</h3>
+                    <p class="text-zinc-400 text-sm leading-relaxed">HamiTTS está programado en Python y convertido a ejecutable (.exe) con una herramienta llamada PyInstaller. Algunos antivirus genéricos o muy sensibles marcan por defecto cualquier archivo creado con PyInstaller como sospechoso, simplemente porque no reconocen su firma digital.</p>
+                </div>
+                <div class="bg-zinc-900/40 border border-zinc-800 p-8 rounded-3xl hover:bg-zinc-900/60 transition-colors">
+                    <div class="text-5xl font-black text-zinc-800 mb-6">03</div>
+                    <h3 class="text-xl font-bold text-white mb-3">Comportamiento automatizado</h3>
+                    <p class="text-zinc-400 text-sm leading-relaxed">El programa necesita interactuar de forma segura con Windows: revisa el registro para comprobar si AutoHotkey está instalado, abre el navegador para Fish Audio y ejecuta comandos en segundo plano. Al no contar con una firma digital comercial, las IA confunden estas acciones con un comportamiento sospechoso.</p>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-r from-zinc-900 to-zinc-950 border border-zinc-800 rounded-2xl p-8 shadow-xl max-w-3xl mx-auto flex flex-col sm:flex-row gap-5 items-start">
+                <div class="p-3 bg-primary-500/10 rounded-full shrink-0">
+                    <i data-lucide="info" class="w-6 h-6 text-primary-500"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-white mb-2 text-lg">En conclusión</h4>
+                    <p class="text-zinc-400 text-sm leading-relaxed">Puedes instalar y usar HamiTTS con total tranquilidad. Si Windows SmartScreen te muestra un aviso, solo haz clic en "Más información" y luego en "Ejecutar de todas formas". Mi compromiso es con la seguridad y la confianza de toda la comunidad.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="border-t border-zinc-800 bg-zinc-900/30 py-24 relative overflow-hidden">
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary-900/10 rounded-full blur-3xl -z-10"></div>
+            
+            <div class="container mx-auto px-4 max-w-3xl text-center">
+                <h2 class="text-3xl font-bold mb-12 text-white tracking-tight">Detrás del Proyecto</h2>
+                
+                <blockquote class="relative p-8 mb-10 bg-zinc-950/50 border border-zinc-800/50 rounded-3xl backdrop-blur">
+                    <i data-lucide="quote" class="absolute top-6 left-6 w-8 h-8 text-zinc-800"></i>
+                    <p class="text-lg sm:text-xl text-zinc-300 italic leading-relaxed relative z-10 pt-8 pb-4 px-4 font-medium">
+                        "Quiero darte las gracias personalmente por descargar y utilizar esta herramienta. Detrás de cada línea de código, cada diseño de interfaz y cada fase de pruebas no hay una empresa ni un equipo grande: este proyecto fue desarrollado en su totalidad por una sola persona. El proceso fue increíblemente difícil, lleno de retos técnicos y horas de solución de problemas para lograr que todo funcione de forma portable y limpia. Tu apoyo usando el programa significa el mundo para mí."
+                    </p>
+                </blockquote>
+                
+                <div class="flex items-center justify-center gap-4">
+                    <div class="w-16 h-16 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center p-2 shadow-lg shadow-primary-500/20">
+                        <img src="logo.png" alt="HamiTTS Avatar" class="w-full h-full object-contain">
+                    </div>
+                    <div class="text-left">
+                        <div class="font-bold text-white text-lg">HamiTTS</div>
+                        <div class="text-sm text-zinc-400">Desarrollador de HamiTTS</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="border-t border-zinc-800 bg-zinc-950 py-12">
+        <div class="container mx-auto px-4 text-center">
+            <div class="flex items-center justify-center gap-3 mb-6 opacity-60 hover:opacity-100 transition-opacity">
+                <img src="logo.png" alt="HamiTTS Logo" class="w-6 h-6 object-contain grayscale opacity-70">
+                <span class="font-bold text-white tracking-tight text-lg">HamiTTS</span>
+            </div>
+            <p class="text-zinc-500 text-sm max-w-xl mx-auto leading-relaxed">
+                © 2026 HamiTTS — Desarrollado de forma independiente.<br>
+                Este programa es un software externo y no está afiliado, asociado, mantenido ni patrocinado por Roblox Corporation.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Inicializar los iconos de Lucide
+        lucide.createIcons();
+    </script>
+</body>
+</html>
