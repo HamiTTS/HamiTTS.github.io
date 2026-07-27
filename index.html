@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HamiTTS — Text-to-Speech para Roblox</title>
+<meta name="description" content="HamiTTS: automatización Text-to-Speech gratuita para Roblox. Respuesta de 100-200ms, 2.2% de uso de RAM.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --black: #030304;
+    --charcoal: #0a0a0f;
+    --panel: #0e0f14;
+    --panel2: #10131c;
+    --line: #1d2029;
+    --blue: #0057ff;
+    --blue-bright: #2b7fff;
+    --cyan: #00d4ff;
+    --ice: #eef1f8;
+    --mute: #8b90a3;
+    --danger: #ffb020;
+    --risk: #ff3b3b;
+    --ff-display: 'Archivo Black', sans-serif;
+    --ff-body: 'Space Grotesk', sans-serif;
+    --ff-mono: 'JetBrains Mono', monospace;
+    --ease: cubic-bezier(.16,1,.3,1);
+    --ease-soft: cubic-bezier(.22,.8,.2,1);
+  }
+
+  *,*::before,*::after{ box-sizing: border-box; }
+  /* scroll-behavior: auto (a propósito, NO "smooth"): el suavizado del
+     scroll ahora lo maneja Lenis (JS), no el navegador. */
+  html{ scroll-behavior: auto; overflow-anchor: none; }
+  /* overflow-anchor:none arriba: el navegador ajusta solo el scroll cuando algo
+     arriba cambia de tamaño (p.ej. al llegar la fuente Archivo Black/Space
+     Grotesk o una imagen tardía) para que el contenido visible no "salte".
+     Ese ajuste automático SÍ dispara el evento "scroll", y como el orbe azul
+     de fondo se mueve en base a ese evento, terminaba en una posición
+     equivocada si la carga tardaba. Desactivarlo evita ese scroll fantasma. */
+
+  /* CSS recomendado por Lenis */
+  .lenis.lenis-smooth{ scroll-behavior: auto !important; }
+  .lenis.lenis-smooth [data-lenis-prevent]{ overscroll-behavior: contain; }
+  .lenis.lenis-stopped{ overflow: hidden; }
+
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior: auto; }
+    *,*::before,*::after{ animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+  }
+
+  body{
+    margin:0;
+    background: var(--black);
+    color: var(--ice);
+    font-family: var(--ff-body);
+    overflow-x: hidden;
+    cursor: none;
+  }
+  a, button, input, select, textarea, label, summary, [role="menuitem"], [role="button"]{ cursor: none; }
+  @media (hover:none), (pointer:coarse){
+    body{ cursor:auto; }
+    a, button, input, select, textarea, label, summary, [role="menuitem"], [role="button"]{ cursor: auto; }
+    .cursor-dot,.cursor-ring{ display:none !important; }
+  }
+
+  ::selection{ background: var(--blue-bright); color: #000; }
+  a{ color: inherit; text-decoration: none; }
+  ::-webkit-scrollbar{ width: 9px; }
+  ::-webkit-scrollbar-track{ background: var(--black); }
+  ::-webkit-scrollbar-thumb{ background: var(--blue); }
+
+  /* ---------- Custom cursor ---------- */
+  .cursor-dot, .cursor-ring{
+    position: fixed; top:0; left:0; pointer-events:none; z-index: 9999;
+    border-radius: 50%; transform: translate(-50%,-50%);
+    will-change: transform;
+    transition: opacity .15s ease;
+  }
+  .cursor-dot{
+    width:6px; height:6px; background: var(--blue-bright);
+    box-shadow: 0 0 4px 1px rgba(255,255,255,0.4);
+  }
+  .cursor-ring{
+    /* Tamaño y borde duplicados a propósito: el círculo se renderiza a mayor
+       resolución interna y luego se reduce con scale(0.5) como base (ver JS).
+       Así el navegador nunca necesita "estirar" la textura por encima de 1x,
+       solo reducirla, lo que elimina el desenfoque al crecer con la animación. */
+    width: 68px; height:68px; border: 2px solid rgba(43,127,255,0.55);
+    box-shadow: 0 0 6px 1px rgba(255,255,255,0.18);
+    transition: border-color .3s ease, background .3s ease;
+    backface-visibility: hidden;
+  }
+  .cursor-ring.active{ background: rgba(43,127,255,0.12); border-color: var(--blue-bright); }
+
+  /* ---------- Preloader ---------- */
+  .preloader{
+    position: fixed; inset:0; z-index: 10000; background: var(--black);
+    display:flex; align-items:center; justify-content:center; flex-direction:column; gap: 22px;
+    transition: opacity 1.1s var(--ease), transform 1.2s var(--ease), filter 1s var(--ease);
+    overflow: hidden;
+  }
+  .preloader.done{ opacity: 0; transform: scale(1.18); filter: blur(14px); pointer-events:none; }
+  .preload-glow{
+    position:absolute; width: 50vw; height: 50vw; max-width: 640px; max-height:640px; border-radius:50%;
+    background: radial-gradient(circle, rgba(43,127,255,0.35), transparent 70%);
+    animation: glowPulse 2.2s ease-in-out infinite;
+  }
+  @keyframes glowPulse{ 0%,100%{ transform: scale(0.9); opacity:.6; } 50%{ transform: scale(1.15); opacity:1; } }
+  .preload-word{
+    font-family: var(--ff-display); font-size: 15vw; color: var(--ice); letter-spacing: -0.02em; line-height:1;
+    position: relative; opacity: 0; transform: scale(1.6); filter: blur(18px);
+    animation: preloadZoom 1.5s var(--ease) forwards;
+  }
+  @keyframes preloadZoom{
+    0%{ opacity: 0; transform: scale(1.6); filter: blur(18px); }
+    55%{ opacity: .16; transform: scale(0.98); filter: blur(0); }
+    75%{ opacity: .16; transform: scale(1.03); }
+    100%{ opacity: .13; transform: scale(1); }
+  }
+  .preload-bar{ width: 260px; height:2px; background: var(--line); overflow:hidden; position:relative; z-index:1; }
+  .preload-bar i{ position:absolute; inset:0 100% 0 0; background: var(--blue-bright); animation: loadFill 1.5s var(--ease) forwards; box-shadow: 0 0 12px var(--blue-bright); }
+  @keyframes loadFill{ to{ right: 0; } }
+  .preload-pct{ font-family: var(--ff-mono); font-size:11px; color: var(--mute); letter-spacing: 0.2em; position:relative; z-index:1; }
+
+  /* ---------- Ambient background ---------- */
+  .grid-bg{
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(43,127,255,0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(43,127,255,0.07) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 20%, black 25%, transparent 80%);
+    animation: gridDrift 30s linear infinite;
+  }
+  @keyframes gridDrift{ from{ background-position: 0 0, 0 0; } to{ background-position: 64px 128px, 64px 128px; } }
+
+  .glow-orb{
+    position: fixed; z-index: 0; pointer-events: none; border-radius: 50%; filter: blur(30px);
+    background: radial-gradient(circle, rgba(0,87,255,0.4), rgba(0,87,255,0) 65%);
+    width: 60vw; height: 60vw; max-width: 900px; max-height: 900px;
+    top: -20vw; left: 50%;
+    will-change: transform;
+  }
+  .glow-orb.b{
+    background: radial-gradient(circle, rgba(0,212,255,0.25), transparent 65%);
+    width: 40vw; height:40vw; max-width:600px; max-height:600px; top: 60vh; left: -10vw;
+  }
+
+  section, header, footer{ position: relative; z-index: 1; }
+
+  .progress-bar{
+    position: fixed; top:0; left:0; height: 2px; background: linear-gradient(90deg, var(--blue), var(--cyan));
+    z-index: 200; width: 0%; box-shadow: 0 0 10px var(--blue-bright);
+  }
+
+  /* ---------- Header ---------- */
+  header{
+    position: fixed; top:0; left:0; right:0; z-index: 100;
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 20px 48px;
+    background: rgba(3,3,4,0.65);
+    backdrop-filter: blur(16px) saturate(140%);
+    border-bottom: 1px solid transparent;
+    transition: border-color .5s var(--ease), background .5s var(--ease), padding .5s var(--ease);
+  }
+  header.scrolled{ border-bottom: 1px solid var(--line); padding: 13px 48px; background: rgba(3,3,4,0.9); }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .brand img{ height: 30px; width: 30px; object-fit: contain; display:block; transition: transform .5s var(--ease-soft); }
+  .brand:hover img{ transform: rotate(-8deg) scale(1.08); }
+  .brand .logo-fallback{
+    height:30px; width:30px; display:none; align-items:center; justify-content:center;
+    background: var(--blue-bright); color:#000; font-family: var(--ff-mono); font-weight:700; font-size:13px;
+  }
+  .brand-name{ font-family: var(--ff-display); font-size: 16px; letter-spacing: 0.02em; }
+  .brand-name span{ color: var(--blue-bright); }
+
+  /* Social buttons (YouTube / TikTok) - top left, replacing old "Descargar" CTA */
+  .social-links{ display:flex; align-items:center; gap:10px; }
+  .social-btn{
+    width: 34px; height: 34px; display:flex; align-items:center; justify-content:center;
+    border: 1px solid var(--blue); color: var(--ice); position:relative; overflow:hidden;
+    transition: color .35s ease, border-color .35s ease, transform .3s var(--ease-soft);
+  }
+  .social-btn::before{ content:''; position:absolute; inset:0; background: var(--blue-bright); transform: translateY(101%); transition: transform .4s var(--ease-soft); z-index:-1; }
+  .social-btn:hover::before{ transform: translateY(0); }
+  .social-btn:hover{ color:#000; border-color: var(--blue-bright); transform: translateY(-3px); }
+  .social-btn:active{ transform: translateY(-1px) scale(.94); }
+  .social-btn svg{ width:16px; height:16px; position:relative; z-index:1; fill: currentColor; transition: transform .4s var(--ease-soft); }
+  .social-btn:hover svg{ transform: scale(1.12); }
+
+  nav ul{ list-style:none; display:flex; gap: 36px; margin:0; padding:0; }
+  nav a{
+    font-family: var(--ff-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--mute); position: relative; padding-bottom: 4px; display:inline-block;
+    transition: color .3s ease;
+  }
+  nav a::after{
+    content:''; position:absolute; left:0; bottom:0; width:0; height:2px; background: var(--blue-bright);
+    transition: width .4s var(--ease-soft); box-shadow: 0 0 8px var(--blue-bright);
+  }
+  nav a:hover{ color: var(--ice); }
+  nav a:hover::after{ width: 100%; }
+
+  .nav-cta{
+    font-family: var(--ff-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    border: 1px solid var(--blue); padding: 9px 18px; color: var(--ice); position:relative; overflow:hidden;
+    transition: color .35s ease, border-color .35s ease;
+  }
+  .nav-cta::before{ content:''; position:absolute; inset:0; background: var(--blue-bright); transform: translateY(101%); transition: transform .4s var(--ease-soft); z-index:-1; }
+  .nav-cta:hover{ color:#000; border-color: var(--blue-bright); }
+  .nav-cta:hover::before{ transform: translateY(0); }
+
+  /* ---------- Hero ---------- */
+  .hero{
+    min-height: 100vh; display:flex; flex-direction: column; justify-content:center;
+    padding: 160px 48px 100px; max-width: 1500px; margin: 0 auto;
+  }
+  .eyebrow{
+    font-family: var(--ff-mono); font-size: 13px; letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--blue-bright); display:flex; align-items:center; gap: 12px; margin-bottom: 28px;
+    opacity:0; transform: translateY(14px);
+  }
+  /* Las animaciones de revelado del hero ya NO corren con temporizadores fijos:
+     se activan cuando JS agrega la clase "loaded" al <body>, justo cuando el
+     preloader realmente termina de ocultarse (sin importar cuánto tardó la carga). */
+  body.loaded .eyebrow{ animation: revealUp .9s var(--ease) forwards .1s; }
+  .eyebrow .dot{ width:8px; height:8px; background: var(--blue-bright); border-radius:50%; box-shadow: 0 0 12px var(--blue-bright); animation: pulseDot 1.8s ease-in-out infinite; }
+  @keyframes pulseDot{ 0%,100%{ opacity:1; transform:scale(1);} 50%{ opacity:.4; transform:scale(1.5);} }
+
+  .hero h1{
+    font-family: var(--ff-display); font-size: clamp(56px, 9.2vw, 164px);
+    line-height: 0.87; letter-spacing: -0.01em; margin: 0; text-transform: uppercase;
+  }
+  .hero h1 .line{ display:block; overflow:hidden; padding-bottom: .05em; }
+  .hero h1 .line span{
+    display:block; transform: translateY(115%) rotate(4deg); transform-origin: left bottom;
+  }
+  .hero h1 .line:nth-child(2) span{ color: var(--blue-bright); position:relative; }
+  body.loaded .hero h1 .line span{ animation: revealLine 1.15s var(--ease) forwards; }
+  body.loaded .hero h1 .line:nth-child(1) span{ animation-delay: .25s; }
+  body.loaded .hero h1 .line:nth-child(2) span{ animation-delay: .4s; }
+  body.loaded .hero h1 .line:nth-child(3) span{ animation-delay: .55s; }
+  @keyframes revealLine{ to{ transform: translateY(0) rotate(0); } }
+  @keyframes revealUp{ to{ opacity:1; transform: translateY(0); } }
+
+  .accent-glow{ display:inline-block; animation: textGlow 3s ease-in-out infinite 3s; }
+  @keyframes textGlow{ 0%,100%{ text-shadow: 0 0 0 rgba(43,127,255,0);} 50%{ text-shadow: 0 0 34px rgba(43,127,255,0.55);} }
+
+  .hero-sub{
+    max-width: 640px; margin-top: 34px; font-size: 18px; line-height: 1.6; color: var(--mute);
+    opacity:0; transform: translateY(14px);
+  }
+  body.loaded .hero-sub{ animation: revealUp .9s var(--ease) forwards .75s; }
+  .hero-sub strong{ color: var(--ice); font-weight:600; }
+
+  .hero-actions{
+    margin-top: 48px; display:flex; align-items:center; gap: 28px; flex-wrap: wrap;
+    opacity:0; transform: translateY(14px);
+  }
+  body.loaded .hero-actions{ animation: revealUp .9s var(--ease) forwards .95s; }
+
+  /* Magnetic download dropdown */
+  .download{ position: relative; }
+  .magnet-wrap{ display:inline-block; will-change: transform; }
+  .download-btn{
+    font-family: var(--ff-mono); font-weight:700; font-size: 14px; letter-spacing: 0.05em; text-transform: uppercase;
+    background: var(--blue-bright); color: #000; border:none; cursor: none;
+    padding: 20px 30px; display:flex; align-items:center; gap: 14px;
+    position: relative; z-index: 2; overflow:hidden;
+    transition: box-shadow .35s ease;
+    clip-path: polygon(0 0, 100% 0, 96% 100%, 0% 100%);
+  }
+  .download-btn::before{
+    content:''; position:absolute; inset:0; background: var(--ice);
+    transform: translateX(-101%); transition: transform .45s var(--ease-soft); z-index:-1;
+  }
+  .download-btn:hover::before{ transform: translateX(0); }
+  .download-btn:hover{ box-shadow: 0 0 44px rgba(43,127,255,0.6); }
+  .download-btn svg{ transition: transform .4s var(--ease-soft); }
+  .download.open .download-btn svg{ transform: rotate(180deg); }
+  .download.open .download-btn{ transform: translateY(-3px); }
+
+  .download-menu{
+    position:absolute; top: calc(100% + 14px); left:0; min-width: 320px;
+    background: var(--panel); border: 1px solid var(--line);
+    box-shadow: 0 30px 70px rgba(0,0,0,0.65);
+    opacity:0; visibility:hidden; transform: translateY(-14px) scale(.97); transform-origin: top left;
+    transition: opacity .3s var(--ease-soft), transform .35s var(--ease-soft), visibility .35s;
+    z-index: 50;
+  }
+  .download.open .download-menu{ opacity:1; visibility:visible; transform: translateY(0) scale(1); }
+
+  .download-item{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding: 16px 20px; border-bottom: 1px solid var(--line);
+    transition: background .25s ease, padding-left .3s var(--ease-soft);
+    opacity: 0; transform: translateX(-8px);
+    position: relative; overflow: hidden;
+  }
+  /* Barrita de progreso que simula la descarga al hacer clic en v1.2 */
+  .download-item.downloading{ background: rgba(43,127,255,0.08); pointer-events: none; }
+  .download-item.downloading::after{
+    content:''; position:absolute; left:0; bottom:0; height:2px; width:0;
+    background: var(--blue-bright); box-shadow: 0 0 10px var(--blue-bright);
+    animation: dlProgress 1.1s var(--ease) forwards;
+  }
+  @keyframes dlProgress{ to{ width:100%; } }
+  .download-item .v-meta{ transition: color .2s ease; }
+  .download-item.downloading .v-meta{ color: var(--blue-bright); }
+  .download.open .download-item{ animation: itemIn .45s var(--ease-soft) forwards; }
+  .download.open .download-item:nth-child(1){ animation-delay: .06s; }
+  .download.open .download-item:nth-child(2){ animation-delay: .12s; }
+  .download.open .download-item:nth-child(3){ animation-delay: .18s; }
+  @keyframes itemIn{ to{ opacity:1; transform: translateX(0); } }
+  .download-item:last-child{ border-bottom:none; }
+  .download-item:hover{ background: rgba(43,127,255,0.12); padding-left: 27px; }
+  .download-item .v-name{ font-family: var(--ff-mono); font-size: 14px; font-weight: 700; }
+  .download-item .v-meta{ font-size: 11px; color: var(--mute); font-family: var(--ff-mono); margin-top:3px; }
+  .tag-new{
+    font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase;
+    background: var(--blue-bright); color:#000; padding: 4px 8px; font-weight:700;
+    animation: tagGlow 2s ease-in-out infinite;
+  }
+  @keyframes tagGlow{ 0%,100%{ box-shadow: 0 0 0 rgba(43,127,255,0);} 50%{ box-shadow: 0 0 18px rgba(43,127,255,0.8);} }
+
+  .hero-stats{ display:flex; gap: 12px; font-family: var(--ff-mono); }
+  .hero-stats .stat{ text-align:left; transition: transform .4s var(--ease-soft); }
+  .hero-stats .stat:hover{ transform: translateY(-3px); }
+  .hero-stats .stat b{ display:block; font-size: 24px; color: var(--blue-bright); font-variant-numeric: tabular-nums; transition: text-shadow .4s ease; }
+  .hero-stats .stat:hover b{ text-shadow: 0 0 18px rgba(43,127,255,0.55); }
+  .hero-stats .stat small{ color: var(--mute); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+  /* ---------- Marquee ---------- */
+  /* overflow: visible (antes "hidden"): el wrap calculaba su altura ANTES de
+     aplicar el skewY de las filas hijas, así que la parte del skew que
+     sobresalía por arriba/abajo de esa caja quedaba recortada por el
+     overflow:hidden — ese era el "corte" en los extremos de la franja. */
+  .marquee-wrap{ overflow: visible; position: relative; z-index: 0; }
+  .hero{ z-index: 3; }
+  .marquee-row{
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    background: var(--blue-bright); overflow:hidden; padding: 16px 0;
+    transform: skewY(-1.4deg);
+    transform-origin: center;
+  }
+  /* margin-top en vw (antes -1px fijo): las dos filas se inclinan en
+     direcciones opuestas, así que la separación entre sus bordes NO es
+     constante — crece proporcionalmente al ancho de pantalla (a mayor vw,
+     mayor apertura de "tijera"). Un valor fijo en px solo compensaba pantallas
+     angostas; en pantallas anchas quedaba el espacio negro al final de la
+     franja. -3vw cubre matemáticamente la divergencia máxima (que es
+     ancho_viewport * tan(1.4°) ≈ 2.45vw) en cualquier tamaño de pantalla. */
+  .marquee-row.alt{ background: var(--black); border-color: var(--blue); margin-top: -3vw; transform: skewY(1.4deg); transform-origin: center; }
+  .marquee-track{ display:flex; width: max-content; animation: scrollL 24s linear infinite; }
+  .marquee-row.alt .marquee-track{ animation: scrollR 28s linear infinite; }
+  .marquee-track span{
+    font-family: var(--ff-display); font-size: 24px; text-transform: uppercase; color: #000;
+    padding: 0 26px; white-space:nowrap; display:flex; align-items:center; gap: 26px;
+  }
+  .marquee-row.alt .marquee-track span{ color: var(--blue-bright); }
+  .marquee-track span::after{ content:'◆'; font-size:13px; color: rgba(0,0,0,0.5); }
+  .marquee-row.alt .marquee-track span::after{ color: rgba(43,127,255,0.4); }
+  @keyframes scrollL{ from{ transform: translateX(0); } to{ transform: translateX(-50%); } }
+  @keyframes scrollR{ from{ transform: translateX(-50%); } to{ transform: translateX(0); } }
+
+  /* ---------- Section shared ---------- */
+  .section{ padding: 150px 48px; max-width: 1500px; margin: 0 auto; }
+  .section-head{ margin-bottom: 64px; max-width: 700px; }
+  .section-eyebrow{
+    font-family: var(--ff-mono); font-size: 12px; letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--blue-bright); margin-bottom: 18px; display:block;
+  }
+  .section h2{ font-family: var(--ff-display); font-size: clamp(36px, 5vw, 68px); line-height: 0.95; text-transform: uppercase; margin: 0; }
+  .section p.lead{ color: var(--mute); font-size: 17px; line-height:1.7; margin-top: 20px; }
+
+  .reveal{ opacity: 0; transform: translateY(56px) scale(.96); clip-path: inset(0 0 12% 0); transition: opacity 1.1s var(--ease), transform 1.1s var(--ease), clip-path 1.1s var(--ease); }
+  .reveal.in-view{ opacity:1; transform: translateY(0) scale(1); clip-path: inset(0 0 0% 0); }
+
+  /* ---------- Aparición más suave para pasos y fact-cards ---------- */
+  .install-step.reveal, .fact-card.reveal{
+    transform: translateY(22px);
+    clip-path: none;
+    transition: opacity 1.1s var(--ease-soft), transform 1.1s var(--ease-soft);
+  }
+  .install-step.reveal.in-view, .fact-card.reveal.in-view{ transform: translateY(0); }
+  .install-grid .install-step:nth-child(1){ transition-delay: 0s; }
+  .install-grid .install-step:nth-child(2){ transition-delay: .08s; }
+  .install-grid .install-step:nth-child(3){ transition-delay: .16s; }
+  .install-grid .install-step:nth-child(4){ transition-delay: .24s; }
+  .install-grid .install-step:nth-child(5){ transition-delay: .32s; }
+  .facts-grid .fact-card:nth-child(1){ transition-delay: 0s; }
+  .facts-grid .fact-card:nth-child(2){ transition-delay: .1s; }
+  .facts-grid .fact-card:nth-child(3){ transition-delay: .2s; }
+
+  /* ---------- Reveal de títulos palabra por palabra ---------- */
+  .word-wrap{ display:inline-block; overflow:hidden; vertical-align:top; padding-bottom:.05em; }
+  .word{ display:inline-block; transform: translateY(112%) rotate(4deg); transform-origin:left bottom; transition: transform .85s var(--ease); }
+  .reveal.in-view .word{ transform: translateY(0) rotate(0); }
+
+  /* ---------- Nav: indicador deslizante ---------- */
+  nav{ position: relative; }
+  .nav-indicator{
+    position:absolute; bottom:-6px; height:2px; background: var(--blue-bright); box-shadow: 0 0 8px var(--blue-bright);
+    transform: translateX(0); width:0; opacity:0;
+    transition: transform .5s var(--ease-soft), width .5s var(--ease-soft), opacity .3s ease;
+    pointer-events:none;
+  }
+
+  /* ---------- Orbes: respiración ambiental ---------- */
+  .glow-orb{ animation: orbBreathe 9s ease-in-out infinite; }
+  .glow-orb.b{ animation: orbBreathe 11s ease-in-out infinite 1.5s; }
+  @keyframes orbBreathe{ 0%,100%{ opacity:1; filter: blur(30px); } 50%{ opacity:.72; filter: blur(42px); } }
+
+  /* ---------- Botón de descarga: leve elevación y respuesta al presionar ---------- */
+  .download-btn .btn-label{ position:relative; z-index:2; display:flex; align-items:center; gap:14px; }
+  .download-btn{ transition: box-shadow .35s ease, transform .25s var(--ease-soft); }
+  .download-btn:hover{ transform: translateY(-3px); }
+  .download-btn:active{ transform: translateY(-1px) scale(.985); transition: transform .12s ease; }
+
+  /* ---------- Install grid ---------- */
+  .install-grid{ display:grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); perspective: 1200px; }
+  .install-grid.reveal-bg{ background: transparent; border-color: transparent; transition: background .9s var(--ease-soft), border-color .9s var(--ease-soft); }
+  .install-grid.reveal-bg.in-view{ background: var(--line); border-color: var(--line); }
+  .install-step{
+    background: var(--panel); padding: 40px 26px; min-height: 300px;
+    display:flex; flex-direction:column; justify-content:space-between;
+    position: relative; overflow:hidden; will-change: transform;
+    transition: background .4s ease, transform .12s linear, box-shadow .4s ease;
+  }
+  .install-step::before{
+    content:''; position:absolute; inset:0; background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(43,127,255,0.22), transparent 55%);
+    opacity:0; transition: opacity .4s ease;
+  }
+  .install-step:hover{ background: var(--panel2); box-shadow: 0 26px 50px rgba(0,0,0,0.5); }
+  .install-step:hover::before{ opacity:1; }
+  .install-step .num{ font-family: var(--ff-mono); font-size: 13px; color: var(--blue-bright); letter-spacing: 0.1em; }
+  .install-step h3{ font-family: var(--ff-body); font-weight: 700; font-size: 19px; line-height:1.3; margin: 22px 0 10px; position: relative; z-index:1; }
+  .install-step p{ font-size: 13.5px; color: var(--mute); line-height:1.6; margin:0; position:relative; z-index:1; }
+  .install-step .icon{
+    width: 40px; height: 40px; border: 1px solid var(--line); display:flex; align-items:center; justify-content:center;
+    margin-bottom: 8px; color: var(--blue-bright); font-family: var(--ff-mono); font-size:13px;
+    transition: border-color .4s ease, transform .4s var(--ease-soft), background .4s ease;
+  }
+  .install-step:hover .icon{ border-color: var(--blue-bright); transform: rotate(-8deg) scale(1.1); background: rgba(43,127,255,0.12); }
+
+  /* ---------- Carousel (screenshots, estilo Play Store) ---------- */
+  .carousel{ position: relative; margin-top: 60px; }
+  .car-track{
+    display:flex; gap: 24px; overflow-x: auto; scroll-snap-type: x mandatory;
+    scroll-behavior: smooth; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    padding: 4px 4px 20px;
+  }
+  .car-track::-webkit-scrollbar{ display:none; }
+  .car-slide{
+    flex: 0 0 72%; max-width: 760px; scroll-snap-align: center; position: relative;
+    overflow: hidden; border-radius: 20px; border: 1px solid var(--line); background: var(--panel);
+    aspect-ratio: 16/10; transition: border-color .5s ease, box-shadow .5s var(--ease-soft), transform .5s var(--ease-soft);
+  }
+  .car-slide:hover{ border-color: var(--blue-bright); box-shadow: 0 32px 70px rgba(0,0,0,0.55); }
+  .car-slide img{
+    width:100%; height:100%; object-fit: cover; display:block;
+    filter: saturate(.88) brightness(.9); transform: scale(1.02);
+    transition: transform 1s var(--ease-soft), filter .6s ease;
+  }
+  .car-slide:hover img{ transform: scale(1.07); filter: saturate(1.05) brightness(1); }
+  .car-cap{
+    position:absolute; left:0; right:0; bottom:0; padding: 26px 28px 22px;
+    background: linear-gradient(to top, rgba(3,3,4,0.96), rgba(3,3,4,0.35) 65%, transparent);
+    transform: translateY(10px); opacity:.88; transition: transform .5s var(--ease-soft), opacity .4s ease;
+  }
+  .car-slide:hover .car-cap{ transform: translateY(0); opacity:1; }
+  .car-cap .gk{ font-family: var(--ff-mono); font-size: 11px; letter-spacing: 0.2em; color: var(--blue-bright); }
+  .car-cap h3{ font-family: var(--ff-body); font-weight:700; font-size: 19px; margin: 8px 0 4px; color: var(--ice); }
+  .car-cap p{ font-size: 13.5px; color: var(--mute); margin:0; line-height:1.55; }
+  .car-btn{
+    position:absolute; top:50%; transform: translateY(-50%); z-index: 5;
+    width: 54px; height: 54px; border-radius: 50%; border: 1px solid var(--line);
+    background: rgba(3,3,4,0.75); backdrop-filter: blur(6px); color: var(--ice);
+    display:flex; align-items:center; justify-content:center; cursor: none;
+    transition: background .35s var(--ease-soft), border-color .35s ease, transform .35s var(--ease-soft), color .35s ease;
+  }
+  .car-btn:hover{ background: var(--blue-bright); border-color: var(--blue-bright); color:#000; transform: translateY(-50%) scale(1.1); }
+  .car-btn.prev{ left: -8px; }
+  .car-btn.next{ right: -8px; }
+  .car-dots{ display:flex; justify-content:center; gap: 9px; margin-top: 30px; }
+  .car-dot{
+    width: 8px; height: 8px; border-radius: 50%; background: var(--line); border: none; cursor: none;
+    transition: background .4s var(--ease-soft), transform .4s var(--ease-soft), width .4s var(--ease-soft), border-radius .4s var(--ease-soft);
+  }
+  .car-dot:hover{ transform: scale(1.3); }
+  .car-dot.active{ background: var(--blue-bright); width: 22px; border-radius: 5px; }
+
+  /* ---------- High contrast facts ---------- */
+  .facts{ background: var(--blue-bright); color: #000; padding: 150px 48px; position: relative; overflow:hidden; }
+  .facts::before{
+    content:''; position:absolute; inset: -20%;
+    background-image: repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 40px);
+    animation: stripeShift 18s linear infinite;
+  }
+  @keyframes stripeShift{ from{ transform: translate(0,0); } to{ transform: translate(56px,56px); } }
+  .facts-inner{ max-width: 1500px; margin:0 auto; position:relative; z-index:1; }
+  .facts .section-eyebrow{ color: rgba(0,0,0,0.6); }
+  .facts h2{ color:#000; }
+  .facts-grid{ display:grid; grid-template-columns: repeat(3,1fr); gap: 2px; margin-top: 60px; background: rgba(0,0,0,0.15); perspective: 1200px; }
+  .facts-grid.reveal-bg{ background: transparent; transition: background .9s var(--ease-soft); }
+  .facts-grid.reveal-bg.in-view{ background: rgba(0,0,0,0.15); }
+  .fact-card{
+    background: var(--blue-bright); padding: 44px 34px; min-height: 260px;
+    display:flex; flex-direction:column; gap: 18px; justify-content:flex-start;
+    transition: background .3s ease, transform .12s linear;
+    will-change: transform;
+  }
+  .fact-card:hover{ background: #0048d6; }
+  .fact-card .fk{ font-family: var(--ff-mono); font-size: 46px; font-weight:700; color: rgba(0,0,0,0.35); line-height:1; transition: color .3s ease; }
+  .fact-card:hover .fk{ color: rgba(0,0,0,0.55); }
+  .fact-card h3{ font-family: var(--ff-body); font-size: 21px; font-weight:700; margin:0; color:#000; }
+  .fact-card p{ margin:0; font-size: 14px; line-height:1.6; color: rgba(0,0,0,0.75); }
+  .fact-card code{ font-family: var(--ff-mono); background:#000; color: var(--blue-bright); padding: 3px 8px; font-size: 13px; }
+
+  /* ---------- Disclaimer ---------- */
+  .disclaimer{ padding: 60px 48px 150px; max-width: 1500px; margin: 0 auto; }
+  .disclaimer-card{
+    border: 1px solid var(--risk); background: linear-gradient(180deg, rgba(255,59,59,0.08), transparent 40%);
+    padding: 52px; position: relative; transition: transform .5s var(--ease-soft), box-shadow .5s var(--ease-soft);
+  }
+  .disclaimer-card:hover{ transform: translateY(-4px); box-shadow: 0 24px 60px rgba(0,0,0,0.4); }
+  .disclaimer-card .flag{
+    font-family: var(--ff-mono); font-size: 11px; letter-spacing:0.1em; text-transform:uppercase;
+    position:absolute; top:-13px; left: 40px; background: var(--black); padding: 0 10px; color: var(--risk);
+  }
+  .disclaimer-head{ display:flex; align-items:center; gap: 20px; margin-bottom: 28px; }
+  .disc-icon{
+    width: 56px; height:56px; border: 1px solid var(--risk); display:flex; align-items:center; justify-content:center;
+    color: var(--risk); flex-shrink:0; animation: iconPulse2 2.4s ease-in-out infinite;
+  }
+  @keyframes iconPulse2{ 0%,100%{ box-shadow: 0 0 0 rgba(255,59,59,0); transform: scale(1);} 50%{ box-shadow: 0 0 26px rgba(255,59,59,0.4); transform: scale(1.04);} }
+  .disclaimer-card h3{ font-family: var(--ff-display); font-size: 24px; text-transform:uppercase; margin:0; letter-spacing: 0.01em; }
+  .disclaimer-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap: 18px; }
+  .disclaimer-list li{ color: var(--mute); font-size: 15px; line-height:1.75; padding-left: 26px; position:relative; }
+  .disclaimer-list li::before{ content:"▲"; position:absolute; left:0; top:2px; color: var(--risk); font-size: 11px; }
+  .disclaimer-list li strong{ color: var(--ice); }
+
+  /* ---------- Security ---------- */
+  .security{ padding: 150px 48px; max-width: 1500px; margin: 0 auto; }
+  .security-card{
+    border: 1px solid var(--danger); background: linear-gradient(180deg, rgba(255,176,32,0.08), transparent 40%);
+    padding: 52px; display:grid; grid-template-columns: 90px 1fr; gap: 36px; align-items:start;
+    position: relative; transition: transform .5s var(--ease-soft), box-shadow .5s var(--ease-soft);
+  }
+  .security-card:hover{ transform: translateY(-4px); box-shadow: 0 24px 60px rgba(0,0,0,0.4); }
+  .security-card .flag{
+    font-family: var(--ff-mono); font-size: 11px; letter-spacing:0.1em; text-transform:uppercase;
+    position:absolute; top:-13px; left: 40px; background: var(--black); padding: 0 10px; color: var(--danger);
+  }
+  .sec-icon{
+    width: 72px; height:72px; border: 1px solid var(--danger); display:flex; align-items:center; justify-content:center;
+    color: var(--danger); flex-shrink:0; animation: iconPulse 2.4s ease-in-out infinite;
+  }
+  @keyframes iconPulse{ 0%,100%{ box-shadow: 0 0 0 rgba(255,176,32,0); transform: scale(1);} 50%{ box-shadow: 0 0 26px rgba(255,176,32,0.4); transform: scale(1.04);} }
+  .security-card h3{ font-family: var(--ff-display); font-size: 24px; text-transform:uppercase; margin: 0 0 16px; letter-spacing: 0.01em; }
+  .security-card p{ color: var(--mute); font-size: 15px; line-height:1.75; margin: 0 0 14px; }
+  .security-card p strong{ color: var(--ice); }
+  .verdict-row{ display:flex; gap: 14px; margin-top: 22px; flex-wrap:wrap; }
+  .verdict{
+    font-family: var(--ff-mono); font-size: 12px; letter-spacing:0.05em; text-transform:uppercase;
+    border: 1px solid var(--line); padding: 10px 16px; display:flex; align-items:center; gap:10px;
+    transition: border-color .3s ease, transform .3s var(--ease-soft);
+  }
+  .verdict.clean:hover{ border-color: var(--blue-bright); transform: translateY(-3px); }
+  .verdict .led{ width:8px; height:8px; border-radius:50%; background: var(--blue-bright); box-shadow: 0 0 10px var(--blue-bright); animation: pulseDot 2.2s ease-in-out infinite; }
+
+  /* ---------- Footer ---------- */
+  footer{ border-top: 1px solid var(--line); padding: 56px 48px 40px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap: 20px; }
+  .footer-brand{ font-family: var(--ff-display); font-size: 18px; text-transform:uppercase; }
+  .footer-brand span{ color: var(--blue-bright); }
+  .footer-note{ font-family: var(--ff-mono); font-size: 12px; color: var(--mute); max-width: 480px; line-height:1.7; }
+  .footer-links{ display:flex; gap: 24px; font-family: var(--ff-mono); font-size:12px; text-transform:uppercase; letter-spacing:0.05em; }
+  .footer-links a{ color: var(--mute); transition: color .25s ease; position: relative; }
+  .footer-links a:hover{ color: var(--blue-bright); }
+
+  a:focus-visible, button:focus-visible{ outline: 2px solid var(--blue-bright); outline-offset: 3px; }
+
+  @media (max-width: 1100px){
+    .install-grid{ grid-template-columns: repeat(2,1fr); }
+    .facts-grid{ grid-template-columns: 1fr; }
+    .car-slide{ flex-basis: 84%; }
+    .car-btn.prev{ left: 6px; }
+    .car-btn.next{ right: 6px; }
+  }
+  @media (max-width: 720px){
+    body{ cursor:auto; } a, button{ cursor:auto; } .cursor-dot,.cursor-ring{ display:none; }
+    header{ padding: 16px 22px; }
+    nav ul{ display:none; }
+    .hero{ padding: 140px 22px 70px; }
+    .section, .facts, .security{ padding: 90px 22px; }
+    .install-grid{ grid-template-columns: 1fr; }
+    .security-card{ grid-template-columns: 1fr; padding: 32px; }
+    .car-slide{ flex-basis: 92%; border-radius: 14px; }
+    .car-btn{ width: 42px; height: 42px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="preloader" id="preloader">
+  <div class="preload-glow"></div>
+  <div class="preload-word">HAMITTS</div>
+  <div class="preload-bar"><i></i></div>
+  <div class="preload-pct">CARGANDO INTERFAZ...</div>
+</div>
+
+<div class="cursor-ring" id="cursorRing"></div>
+<div class="cursor-dot" id="cursorDot"></div>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<div class="grid-bg" id="gridBg"></div>
+<div class="glow-orb" id="orbA"></div>
+<div class="glow-orb b" id="orbB"></div>
+
+<header id="siteHeader">
+  <div class="brand">
+    <img src="logo.png" alt="HamiTTS" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+    <div class="logo-fallback">H</div>
+    <div class="brand-name">HAMI<span>TTS</span></div>
+  </div>
+  <nav>
+    <ul>
+      <li><a href="#instalacion" class="nav-link">Instalación</a></li>
+      <li><a href="#vista-previa" class="nav-link">Vista previa</a></li>
+      <li><a href="#saber" class="nav-link">Cosas que debes saber</a></li>
+      <li><a href="#seguridad" class="nav-link">Seguridad</a></li>
+    </ul>
+    <span class="nav-indicator" id="navIndicator"></span>
+  </nav>
+  <div class="social-links">
+    <a class="social-btn" href="https://www.youtube.com/@HamiTTTS" target="_blank" rel="noopener noreferrer" aria-label="YouTube de HamiTTS" title="YouTube">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23.5 6.2s-.23-1.64-.94-2.36c-.9-.94-1.9-.95-2.36-1C16.9 2.5 12 2.5 12 2.5h-.01s-4.9 0-8.19.34c-.46.05-1.46.06-2.36 1C.73 4.56.5 6.2.5 6.2S.25 8.13.25 10.07v1.85c0 1.94.25 3.87.25 3.87s.23 1.64.94 2.36c.9.94 2.08.91 2.6 1.01 1.89.18 8.02.33 8.02.33s4.9-.01 8.19-.34c.46-.05 1.46-.06 2.36-1 .71-.72.94-2.36.94-2.36s.25-1.93.25-3.87v-1.85c0-1.94-.25-3.87-.25-3.87ZM9.6 14.75V7.4l6.4 3.68-6.4 3.67Z"/></svg>
+    </a>
+    <a class="social-btn" href="https://www.tiktok.com/@hamirblx" target="_blank" rel="noopener noreferrer" aria-label="TikTok de HamiTTS" title="TikTok">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.6 5.82c-.9-.78-1.47-1.9-1.6-3.14h-3.02v13.19c0 1.6-1.3 2.9-2.9 2.9a2.9 2.9 0 0 1-2.9-2.9 2.9 2.9 0 0 1 2.9-2.9c.3 0 .58.04.85.13v-3.06a6 6 0 0 0-.85-.06 5.94 5.94 0 0 0-5.94 5.94A5.94 5.94 0 0 0 9 21.86a5.94 5.94 0 0 0 5.94-5.94V9.4a7.83 7.83 0 0 0 4.56 1.46V7.85a4.8 4.8 0 0 1-2.9-2.03Z"/></svg>
+    </a>
+  </div>
+
+</header>
+
+<section class="hero" id="descarga">
+  <div class="eyebrow"><span class="dot"></span> HERRAMIENTA GRATUITA · PUENTE TEXT-TO-SPEECH PARA ROBLOX</div>
+  <h1>
+    <span class="line"><span>HAMITTS:</span></span>
+    <span class="line"><span class="accent-glow">DE TEXTO A VOZ IA</span></span>
+    <span class="line"><span>EN ROBLOX.</span></span>
+  </h1>
+  <p class="hero-sub">
+    Respuesta de <strong>100 a 200 ms</strong> dependiendo de tu conexión a internet, usando apenas un
+    <strong>2.2% de tu memoria RAM</strong>. Herramienta externa e independiente para Roblox.
+  </p>
+  <div class="hero-actions">
+    <div class="download magnet-wrap" id="downloadDropdown">
+      <button class="download-btn magnet" data-magnet="0.35" id="downloadBtn" aria-haspopup="true" aria-expanded="false">
+        <span class="btn-label">Descargar HamiTTS
+        <svg width="14" height="9" viewBox="0 0 14 9" fill="none"><path d="M1 1L7 7L13 1" stroke="black" stroke-width="2" stroke-linecap="round"/></svg></span>
+      </button>
+      <div class="download-menu" role="menu">
+        <a class="download-item" role="menuitem" id="downloadV12" href="https://github.com/HamiTTS/HamiTTS.github.io/releases/download/v1.2/HamiTTS.v1.2.zip">
+          <div>
+            <div class="v-name">HamiTTS v1.2</div>
+            <div class="v-meta" id="downloadV12Meta">Última compilación estable</div>
+          </div>
+          <span class="tag-new">Nuevo</span>
+        </a>
+        <a class="download-item" role="menuitem" href="https://www.mediafire.com/file/uia7idscnenwj7e/HamiTTS_V1.1.zip/file" target="_blank" rel="noopener noreferrer">
+          <div>
+            <div class="v-name">HamiTTS v1.1</div>
+            <div class="v-meta">Compilación anterior</div>
+          </div>
+        </a>
+        <a class="download-item" role="menuitem" href="https://www.mediafire.com/file/ao1s1c5d7t24vd4/HamiTTS.zip/file" target="_blank" rel="noopener noreferrer">
+          <div>
+            <div class="v-name">HamiTTS v1.0</div>
+            <div class="v-meta">Versión original</div>
+          </div>
+        </a>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><b class="count-ms">0</b><small>MS de respuesta</small></div>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><b class="count-ram">0</b><small>% de uso de RAM</small></div>
+    </div>
+  </div>
+</section>
+
+<div class="marquee-wrap">
+  <div class="marquee-row">
+    <div class="marquee-track">
+      <span><span>100-200MS Respuesta</span><span>Fish Audio</span><span>AutoHotkey</span><span>VB-Cable</span><span>Roblox Ready</span><span>Código Abierto</span></span>
+      <span><span>100-200MS Respuesta</span><span>Fish Audio</span><span>AutoHotkey</span><span>VB-Cable</span><span>Roblox Ready</span><span>Código Abierto</span></span>
+    </div>
+  </div>
+  <div class="marquee-row alt">
+    <div class="marquee-track">
+      <span><span>2.2% RAM</span><span>8,000 Tokens Gratis</span><span>Windows Defender: Limpio</span><span>Kaspersky: Limpio</span><span>Activación con "/"</span></span>
+      <span><span>2.2% RAM</span><span>8,000 Tokens Gratis</span><span>Windows Defender: Limpio</span><span>Kaspersky: Limpio</span><span>Activación con "/"</span></span>
+    </div>
+  </div>
+</div>
+
+<section class="section" id="instalacion">
+  <div class="section-head reveal">
+    <span class="section-eyebrow">Puesta a punto</span>
+    <h2>Guía de instalación</h2>
+    <p class="lead">Cinco pasos, en orden, y estás transmitiendo voz en Roblox. Sin configuraciones complicadas.</p>
+  </div>
+  <div class="install-grid reveal-bg">
+    <div class="install-step reveal tilt">
+      <div>
+        <div class="icon">01</div>
+        <span class="num">PASO 01</span>
+        <h3>Extrae y ejecuta</h3>
+        <p>Descomprime el archivo descargado y ejecuta <code style="font-family:var(--ff-mono);color:var(--blue-bright);background:#000;padding:2px 6px;">HamiTTS.exe</code> para iniciar el programa.</p>
+      </div>
+    </div>
+    <div class="install-step reveal tilt">
+      <div>
+        <div class="icon">02</div>
+        <span class="num">PASO 02</span>
+        <h3>Instala dependencias</h3>
+        <p>El programa <strong style="color:var(--ice)">AutoHotkey</strong> ya viene pre-instalado en el programa, solo tienes que instalar <strong style="color:var(--ice)">VB-Audio Virtual Cable</strong>. en la pestaña de Herramientas de el programa, ya que es un requisito para que la automatización funcione. Despues de la instalacion, reinicia tu pc</p>
+      </div>
+    </div>
+    <div class="install-step reveal tilt">
+      <div>
+        <div class="icon">03</div>
+        <span class="num">PASO 03</span>
+        <h3>Rutea el sonido</h3>
+        <p>Despues de el reinicio, abre el programa y entra a la pestaña de <strong style="color:var(--ice)">"Heramientas"</strong>. En esa pestaña, solo tienes que dar click a el boton de <strong style="color:var(--ice)">"configurar"</strong> para mandar tu audio de el navegador a roblox.
+      </div>
+    </div>
+    <div class="install-step reveal tilt">
+      <div>
+        <div class="icon">04</div>
+        <span class="num">PASO 04</span>
+        <h3>Inicia sesión</h3>
+        <p>Ve a la pestaña de <strong style="color:var(--ice)">Inicio</strong> y seleciona tu navegador y el idioma de tu teclado. una vez hecho esto, presiona en <strong style="color:var(--ice)">INICIAR TTS</strong>, se te enviara a la pagina de <strong style="color:var(--ice)">Fish Audio</strong> y inicia sesion. una vez hecho esto, seleciona cualquier voz IA.</p>
+      </div>
+    </div>
+    <div class="install-step reveal tilt">
+      <div>
+        <div class="icon">05</div>
+        <span class="num">PASO 05</span>
+        <h3>Configura Roblox</h3>
+        <p>Entra a un juego de roblox y cambia tu salida de audio por <strong style="color:var(--ice)">"CABLE Output"</strong>, abre el chat con tu tecla de activacion, escribe algo y presiona enter.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="vista-previa">
+  <div class="section-head reveal">
+    <span class="section-eyebrow">Así se ve</span>
+    <h2>Vista previa del programa</h2>
+    <p class="lead">Un panel simple y directo: configurás una vez y HamiTTS queda listo para inyectar voz en cada partida.</p>
+  </div>
+  <div class="carousel reveal">
+    <button class="car-btn prev" id="carPrev" aria-label="Captura anterior">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 5L8 12L15 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="car-track" id="carTrack">
+      <div class="car-slide">
+        <img src="./hamitts-inicio.png" width="1131" height="679" alt="Panel de Inicio de HamiTTS con la configuración de navegador, tecla de activación y el botón Iniciar TTS">
+        <div class="car-cap">
+          <span class="gk">01 · Inicio</span>
+          <h3>Configuración de inyección</h3>
+          <p>Elegí tu navegador y tecla de activación, y arrancá el TTS con un clic.</p>
+        </div>
+      </div>
+      <div class="car-slide">
+        <img src="./hamitts-frases-rapidas.png" width="1130" height="675" alt="Panel de Frases Rápidas de HamiTTS mostrando el historial de frases inyectadas en la sesión">
+        <div class="car-cap">
+          <span class="gk">02 · Frases rápidas</span>
+          <h3>Historial de sesión</h3>
+          <p>Cada frase inyectada queda registrada con la hora exacta en que se envió.</p>
+        </div>
+      </div>
+      <div class="car-slide">
+        <img src="./hamitts-herramientas.png" width="1129" height="679" alt="Panel de Herramientas de HamiTTS con el estado del Cable de Audio Virtual y el formato de hora">
+        <div class="car-cap">
+          <span class="gk">03 · Herramientas</span>
+          <h3>Cable de audio virtual</h3>
+          <p>Enrutamiento de audio automático hacia Roblox Voice, sin pasos manuales.</p>
+        </div>
+      </div>
+      <div class="car-slide">
+        <img src="./hamitts-personalizacion.png" width="1128" height="678" alt="Panel de Personalización de HamiTTS con selección de fondo de pantalla y color de acento">
+        <div class="car-cap">
+          <span class="gk">04 · Personalización</span>
+          <h3>A tu estilo</h3>
+          <p>Cambiá el fondo, el color de acento y la opacidad del panel a tu gusto.</p>
+        </div>
+      </div>
+    </div>
+    <button class="car-btn next" id="carNext" aria-label="Siguiente captura">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 5L16 12L9 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+  <div class="car-dots" id="carDots"></div>
+</section>
+
+<section class="facts" id="saber">
+  <div class="facts-inner">
+    <div class="section-head reveal">
+      <span class="section-eyebrow">Antes de arrancar</span>
+      <h2>Cosas que debes saber</h2>
+    </div>
+    <div class="facts-grid reveal-bg">
+      <div class="fact-card reveal tilt">
+        <div class="fk">01</div>
+        <h3>Activación táctica</h3>
+        <p>Abre el chat de Roblox con <code>/</code> o <code>-</code> y presiona <code>ENTER</code>. Así se activa HamiTTS al instante.</p>
+      </div>
+      <div class="fact-card reveal tilt">
+        <div class="fk">02</div>
+        <h3>Tokens de Fish Audio</h3>
+        <p>Toda cuenta nueva recibe <code>8,000 tokens</code> gratuitos para empezar a generar voz sin costo.</p>
+      </div>
+      <div class="fact-card reveal tilt">
+        <div class="fk">03</div>
+        <h3>Sin filtros</h3>
+        <p>El programa de HamiTTS <code>no tiene filtros</code>, asi que usalo por tu propio riesgo.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="security" id="seguridad">
+  <div class="section-head reveal">
+    <span class="section-eyebrow">Transparencia</span>
+    <h2>Sobre los antivirus</h2>
+  </div>
+  <div class="security-card reveal">
+    <span class="flag">Aviso</span>
+    <div class="sec-icon">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M12 2L20 6V12C20 17 16.5 20.7 12 22C7.5 20.7 4 17 4 12V6L12 2Z" stroke="currentColor" stroke-width="1.6"/><path d="M12 8V13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="16.3" r="1" fill="currentColor"/></svg>
+    </div>
+    <div>
+      <h3>Falsos positivos en VirusTotal</h3>
+      <p>Algunos motores en <strong>VirusTotal</strong> pueden marcar a HamiTTS como sospechoso. Esto ocurre porque el ejecutable está empaquetado con <strong>PyInstaller</strong> y utiliza <strong>macros de teclado</strong> mediante AutoHotkey — un patrón que comparten muchas herramientas legítimas de automatización, pero que los heurísticos genéricos suelen señalar por precaución.</p>
+      <p>Los motores que más importan lo consideran limpio, y el proyecto es de <strong>código abierto</strong>: cualquiera puede revisar el código fuente.</p>
+      <div class="verdict-row">
+        <div class="verdict clean"><span class="led"></span> Windows Defender — Limpio</div>
+        <div class="verdict clean"><span class="led"></span> Kaspersky — Limpio</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="disclaimer" id="disclaimer">
+  <div class="section-head reveal">
+    <span class="section-eyebrow">Léelo antes de usar</span>
+    <h2>Descargo de responsabilidad</h2>
+  </div>
+  <div class="disclaimer-card reveal">
+    <span class="flag">Advertencia</span>
+    <div class="disclaimer-head">
+      <div class="disc-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2L20 6V12C20 17 16.5 20.7 12 22C7.5 20.7 4 17 4 12V6L12 2Z" stroke="currentColor" stroke-width="1.6"/><path d="M12 8V13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="16.3" r="1" fill="currentColor"/></svg>
+      </div>
+      <h3>Uso bajo tu propio riesgo</h3>
+    </div>
+    <ul class="disclaimer-list">
+      <li><strong>Sin filtro de contenido:</strong> HamiTTS no censura ni filtra palabras subidas de tono. Cualquier texto que escribas mientras la macro esté activa se convertirá en voz y se reproducirá tal cual en el Voice Chat de Roblox.</li>
+      <li><strong>Moderación de Roblox:</strong> el Voice Chat de Roblox analiza el audio en tiempo real. Si el bot reproduce una grosería o palabra prohibida, puedes recibir desde una advertencia hasta un baneo temporal del VC o una suspensión de tu cuenta.</li>
+      <li><strong>Responsabilidad del usuario:</strong> el uso de esta herramienta es 100% bajo tu responsabilidad. No me hago responsable por advertencias, restricciones del Voice Chat, ni baneos de cuenta derivados de un mal uso del programa.</li>
+      <li><strong>Recomendación:</strong> ten cuidado con lo que escribes mientras la macro esté activa, y si vas a bromear, hazlo en servidores privados para evitar reportes innecesarios.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div>
+    <div class="footer-brand">HAMI<span>TTS</span></div>
+    <p class="footer-note">Software independiente desarrollado por <strong style="color:var(--ice)">Hamlh44</strong>. No afiliado, respaldado ni patrocinado por Roblox Corporation.</p>
+  </div>
+  <div class="footer-links">
+    <a href="#instalacion">Instalación</a>
+    <a href="#vista-previa">Vista previa</a>
+    <a href="#saber">Guía rápida</a>
+    <a href="#seguridad">Seguridad</a>
+    <a href="#disclaimer">Disclaimer</a>
+  </div>
+</footer>
+
+<script src="./lenis.min.js"></script>
+<script>
+  // Evita que el navegador restaure un scroll previo (o lo reajuste solo por
+  // los cambios de altura al llegar imágenes tardías) mientras el preloader
+  // sigue tapando la pantalla — esto era lo que descolocaba el orbe azul.
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  window.scrollTo(0, 0);
+
+  // Simula visualmente la descarga de v1.2 (barra de progreso + texto),
+  // mientras el navegador descarga el archivo real en segundo plano sin
+  // sacar al usuario de la página (es un link directo a GitHub Releases).
+  const dlV12 = document.getElementById('downloadV12');
+  const dlV12Meta = document.getElementById('downloadV12Meta');
+  if (dlV12 && dlV12Meta) {
+    const originalMeta = dlV12Meta.textContent;
+    dlV12.addEventListener('click', () => {
+      if (dlV12.classList.contains('downloading')) return;
+      dlV12.classList.add('downloading');
+      dlV12Meta.textContent = 'Descargando…';
+      setTimeout(() => {
+        dlV12.classList.remove('downloading');
+        dlV12Meta.textContent = originalMeta;
+      }, 1400);
+    });
+  }
+
+  // Preloader
+  window.addEventListener('load', () => {
+    const pre = document.getElementById('preloader');
+    setTimeout(() => {
+      pre.classList.add('done');
+      // Recién AQUÍ se activan las animaciones de entrada del hero, sin
+      // importar cuánto haya tardado la carga real de la página.
+      document.body.classList.add('loaded');
+    }, 1550);
+  });
+
+  // Custom cursor
+  const dot = document.getElementById('cursorDot');
+  const ring = document.getElementById('cursorRing');
+  let mx = innerWidth/2, my = innerHeight/2, rx = mx, ry = my;
+  // Base 0.5 porque el círculo CSS ahora mide 68px (el doble del tamaño visual
+  // deseado de 34px). Al hover, 0.925 = 0.5 * 1.85, para conservar exactamente
+  // el mismo tamaño final de antes. Ningún valor supera 1, así el navegador
+  // solo reduce la textura rasterizada, nunca la amplía (sin blur).
+  let ringScale = 0.5, ringScaleTarget = 0.5;
+  window.addEventListener('mousemove', (e) => { mx = e.clientX; my = e.clientY; dot.style.transform = `translate(${mx}px, ${my}px) translate(-50%,-50%)`; });
+
+  // Qué elementos activan el estado "grande" del anillo.
+  const hoverSelector = 'a, button, .install-step, .fact-card, .car-slide';
+  let isHoveringInteractive = false;
+
+  // El estado de hover se recalcula en CADA frame (dentro de animRing), no
+  // solo con mouseenter/mouseleave ni con el evento nativo "scroll".
+  // Motivo: Lenis anima el scroll con su propio loop interno y no siempre
+  // dispara el evento "scroll" del navegador en sincronía con lo que se ve
+  // en pantalla — por eso, si el usuario scrolleaba sin mover el mouse hasta
+  // dejar un elemento interactuable justo debajo del cursor, el anillo se
+  // quedaba "congelado" pequeño e ignoraba por completo esa posición.
+  // Usando elementFromPoint(mx,my) en el propio rAF del anillo, el hover
+  // queda siempre sincronizado con lo que realmente hay bajo el cursor,
+  // sin importar si el movimiento vino del mouse, del scroll o de Lenis.
+  function updateHoverState(){
+    const el = document.elementFromPoint(mx, my);
+    const match = !!(el && el.closest(hoverSelector));
+    if (match === isHoveringInteractive) return;
+    isHoveringInteractive = match;
+    ring.classList.toggle('active', match);
+    ringScaleTarget = match ? 0.925 : 0.5;
+  }
+
+  function animRing(){
+    rx += (mx - rx) * 0.18; ry += (my - ry) * 0.18;
+    ringScale += (ringScaleTarget - ringScale) * 0.14;
+    ring.style.transform = `translate(${rx}px, ${ry}px) translate(-50%,-50%) scale(${ringScale.toFixed(3)})`;
+    updateHoverState();
+    requestAnimationFrame(animRing);
+  }
+  animRing();
+
+  // Ocultar el cursor personalizado cuando el mouse real sale del documento
+  // (por ejemplo al pasar sobre la barra de scroll nativa del navegador, que
+  // no dispara "mousemove" en la página). Sin esto, el punto/anillo se
+  // quedaba congelado en la última posición conocida y "teletransportaba"
+  // al soltar la barra y volver a mover el mouse dentro de la página.
+  document.documentElement.addEventListener('mouseleave', () => {
+    dot.style.opacity = '0';
+    ring.style.opacity = '0';
+  });
+  document.documentElement.addEventListener('mouseenter', (e) => {
+    mx = e.clientX; my = e.clientY; rx = mx; ry = my;
+    dot.style.transform = `translate(${mx}px, ${my}px) translate(-50%,-50%)`;
+    ring.style.transform = `translate(${rx}px, ${ry}px) translate(-50%,-50%) scale(${ringScale.toFixed(3)})`;
+    dot.style.opacity = '1';
+    ring.style.opacity = '1';
+  });
+
+
+  // Header scroll state + scroll progress bar
+  const header = document.getElementById('siteHeader');
+  const progressBar = document.getElementById('progressBar');
+  const orbA = document.getElementById('orbA');
+  const orbB = document.getElementById('orbB');
+  function updateOnScroll(){
+    const scrolled = window.scrollY;
+    header.classList.toggle('scrolled', scrolled > 20);
+    const max = document.documentElement.scrollHeight - innerHeight;
+    progressBar.style.width = (scrolled / max * 100) + '%';
+    orbA.style.transform = `translate(-50%, ${scrolled * 0.15}px)`;
+    orbB.style.transform = `translateY(${scrolled * -0.08}px)`;
+  }
+  // Se llama una vez de inmediato para que el orbe quede bien ubicado desde
+  // el primer frame (antes existía solo dentro del listener de "scroll", así
+  // que si no había un evento de scroll real, se quedaba sin transform).
+  updateOnScroll();
+  window.addEventListener('scroll', updateOnScroll, { passive: true });
+
+  // Parallax orbs on mouse move
+  window.addEventListener('mousemove', (e) => {
+    const nx = (e.clientX / innerWidth - 0.5);
+    orbA.style.marginLeft = (nx * 40) + 'px';
+    orbB.style.marginLeft = (nx * 60) + 'px';
+  });
+
+  // Magnetic buttons — spring back smoothly instead of snapping to origin
+  document.querySelectorAll('.magnet').forEach(el => {
+    const strength = parseFloat(el.dataset.magnet) || 0.3;
+    const target = el.closest('.magnet-wrap') || el;
+    let tx = 0, ty = 0, cx = 0, cy = 0;
+    el.addEventListener('mousemove', (e) => {
+      const r = el.getBoundingClientRect();
+      tx = (e.clientX - r.left - r.width / 2) * strength;
+      ty = (e.clientY - r.top - r.height / 2) * strength;
+    });
+    el.addEventListener('mouseleave', () => { tx = 0; ty = 0; });
+    (function loop(){
+      cx += (tx - cx) * 0.15;
+      cy += (ty - cy) * 0.15;
+      target.style.transform = `translate(${cx.toFixed(2)}px, ${cy.toFixed(2)}px)`;
+      requestAnimationFrame(loop);
+    })();
+  });
+
+  // Download dropdown toggle
+  const dd = document.getElementById('downloadDropdown');
+  const ddBtn = document.getElementById('downloadBtn');
+  ddBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const willOpen = !dd.classList.contains('open');
+    dd.classList.toggle('open');
+    ddBtn.setAttribute('aria-expanded', willOpen);
+  });
+  document.addEventListener('click', (e) => {
+    if (!dd.contains(e.target)) { dd.classList.remove('open'); ddBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { dd.classList.remove('open'); ddBtn.setAttribute('aria-expanded', 'false'); }
+  });
+
+  // Split de títulos en palabras (reveal palabra por palabra, igual que el hero)
+  document.querySelectorAll('.section-head h2, .facts h2').forEach(h => {
+    const words = h.textContent.trim().split(/\s+/);
+    h.innerHTML = words.map(w => `<span class="word-wrap"><span class="word">${w}</span></span>`).join(' ');
+    h.querySelectorAll('.word').forEach((w, i) => { w.style.transitionDelay = (i * 0.055) + 's'; });
+  });
+
+  // Scroll-spy: indicador deslizante bajo el link activo del nav
+  const navIndicator = document.getElementById('navIndicator');
+  const navLinksEls = [...document.querySelectorAll('.nav-link')];
+  const navTargets = navLinksEls.map(a => document.getElementById(a.getAttribute('href').slice(1))).filter(Boolean);
+  function moveIndicatorTo(link){
+    if (!link || !navIndicator) return;
+    const nav = link.closest('nav');
+    const navRect = nav.getBoundingClientRect();
+    const r = link.getBoundingClientRect();
+    navIndicator.style.width = r.width + 'px';
+    navIndicator.style.transform = `translateX(${r.left - navRect.left}px)`;
+    navIndicator.style.opacity = '1';
+  }
+  if (navTargets.length) {
+    const navSpy = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const idx = navTargets.indexOf(entry.target);
+          if (idx > -1) moveIndicatorTo(navLinksEls[idx]);
+        }
+      });
+    }, { threshold: 0.4, rootMargin: '-100px 0px -60% 0px' });
+    navTargets.forEach(t => navSpy.observe(t));
+  }
+  window.addEventListener('resize', () => {
+    const activeIdx = navTargets.findIndex(t => {
+      const r = t.getBoundingClientRect();
+      return r.top < innerHeight * 0.5 && r.bottom > 0;
+    });
+    if (activeIdx > -1) moveIndicatorTo(navLinksEls[activeIdx]);
+  });
+
+  // Scroll reveal
+  const revealEls = document.querySelectorAll('.reveal, .reveal-bg');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('in-view'), i * 60);
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -80px 0px' });
+  revealEls.forEach(el => io.observe(el));
+
+  // Count-up stats
+  function countUp(el, target, duration, decimals){
+    const start = performance.now();
+    function tick(now){
+      const p = Math.min((now-start)/duration, 1);
+      const eased = 1 - Math.pow(1-p, 3);
+      el.textContent = (target * eased).toFixed(decimals);
+      if (p < 1) requestAnimationFrame(tick);
+      else el.textContent = target.toFixed(decimals);
+    }
+    requestAnimationFrame(tick);
+  }
+  const msEl = document.querySelector('.count-ms');
+  const ramEl = document.querySelector('.count-ram');
+  setTimeout(() => {
+    countUp(msEl, 150, 1400, 0);
+    countUp(ramEl, 2.2, 1400, 1);
+  }, 2500);
+
+  // 3D tilt for install steps & fact cards
+  document.querySelectorAll('.tilt').forEach(card => {
+    card.addEventListener('mouseenter', () => {
+      card.style.transition = 'transform .1s linear';
+    });
+    card.addEventListener('mousemove', (e) => {
+      const r = card.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width;
+      const py = (e.clientY - r.top) / r.height;
+      const rotX = (py - 0.5) * -10;
+      const rotY = (px - 0.5) * 10;
+      card.style.transform = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateZ(6px)`;
+      card.style.setProperty('--mx', (px*100)+'%');
+      card.style.setProperty('--my', (py*100)+'%');
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.transition = 'transform .7s var(--ease-soft)';
+      card.style.transform = 'perspective(800px) rotateX(0) rotateY(0) translateZ(0)';
+    });
+  });
+
+  // ---------- Smooth scroll (Lenis) ----------
+  // Lenis es la librería que usan sitios con ese scroll "mantecoso" (agencias,
+  // portfolios, sitios de F1, etc). Reemplaza el scroll nativo del navegador
+  // por una animación con inercia, normalizando cualquier mouse/trackpad
+  // brusco — que era justo el problema.
+  // Nota: a propósito NO se verifica `prefers-reduced-motion` — el efecto
+  // queda activo siempre para todos los visitantes, igual que en sitios
+  // como landonorris.com. Esto ignora la preferencia de accesibilidad del
+  // sistema operativo del usuario.
+  let lenis;
+  if (typeof Lenis === 'undefined') {
+    // Si esto aparece en la consola (F12 → Console), el archivo lenis.min.js
+    // no cargó — revisá que esté en la misma carpeta que este HTML y que
+    // lo estés sirviendo bien.
+    console.error('[HamiTTS] Lenis no se cargó (lenis.min.js) — el scroll suave no está activo.');
+  } else {
+    lenis = new Lenis({
+      duration: 1.4,                                     // más larga = más inercia al soltar la rueda
+      easing: (t) => 1 - Math.pow(1 - t, 4),              // ease-out más progresivo (menos "brusco" al final)
+      wheelMultiplier: 0.85,                              // cada "click" de rueda mueve un poco menos, se siente más controlado
+      touchMultiplier: 2,
+      smoothTouch: false,                                // en táctil se deja el scroll nativo (ya trae su propio momentum)
+      autoRaf: true,                                      // Lenis maneja su propio requestAnimationFrame internamente
+    });
+  }
+
+  // Smooth anchor scroll offset for fixed header
+  document.querySelectorAll('a[href^="#"]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      const targetId = link.getAttribute('href').slice(1);
+      const target = document.getElementById(targetId);
+      if (target) {
+        e.preventDefault();
+        if (lenis) lenis.scrollTo(target, { offset: -84 });
+        else {
+          const y = target.getBoundingClientRect().top + window.scrollY - 84;
+          window.scrollTo({ top: y, behavior: 'smooth' });
+        }
+      }
+    });
+  });
+
+  // Carrusel de capturas (estilo Play Store)
+  const carTrack = document.getElementById('carTrack');
+  if (carTrack) {
+    const carSlides = [...carTrack.querySelectorAll('.car-slide')];
+    const carDotsWrap = document.getElementById('carDots');
+    const carPrev = document.getElementById('carPrev');
+    const carNext = document.getElementById('carNext');
+
+    carSlides.forEach((slide, i) => {
+      const dot = document.createElement('button');
+      dot.className = 'car-dot' + (i === 0 ? ' active' : '');
+      dot.setAttribute('aria-label', `Ir a la captura ${i + 1}`);
+      dot.addEventListener('click', () => {
+        slide.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      });
+      carDotsWrap.appendChild(dot);
+    });
+    const carDots = [...carDotsWrap.querySelectorAll('.car-dot')];
+
+    carPrev.addEventListener('click', () => {
+      carTrack.scrollBy({ left: -carTrack.clientWidth * 0.8, behavior: 'smooth' });
+    });
+    carNext.addEventListener('click', () => {
+      carTrack.scrollBy({ left: carTrack.clientWidth * 0.8, behavior: 'smooth' });
+    });
+
+    const carObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting && entry.intersectionRatio > 0.6) {
+          const idx = carSlides.indexOf(entry.target);
+          carDots.forEach(d => d.classList.remove('active'));
+          carDots[idx]?.classList.add('active');
+        }
+      });
+    }, { root: carTrack, threshold: [0.6] });
+    carSlides.forEach(slide => carObserver.observe(slide));
+
+    // Autoplay: avanza sola cada 4.2s, se pausa al interactuar y se reanuda tras un respiro
+    let carAutoplay = null;
+    let carResumeTimeout = null;
+    function carGoNext(){
+      const current = carDots.findIndex(d => d.classList.contains('active'));
+      const nextIdx = (current + 1) % carSlides.length;
+      carSlides[nextIdx].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+    function carStartAutoplay(){
+      if (carAutoplay) return;
+      carAutoplay = setInterval(carGoNext, 4200);
+    }
+    function carStopAutoplay(){
+      if (carAutoplay) { clearInterval(carAutoplay); carAutoplay = null; }
+    }
+    function carPauseThenResume(){
+      carStopAutoplay();
+      clearTimeout(carResumeTimeout);
+      carResumeTimeout = setTimeout(carStartAutoplay, 5000);
+    }
+    [carTrack, carPrev, carNext, ...carDots].forEach(el => {
+      el.addEventListener('pointerdown', carPauseThenResume);
+    });
+    carTrack.addEventListener('mouseenter', carStopAutoplay);
+    carTrack.addEventListener('mouseleave', carStartAutoplay);
+    const carIO = new IntersectionObserver((entries) => {
+      entries.forEach(entry => { if (entry.isIntersecting) carStartAutoplay(); else carStopAutoplay(); });
+    }, { threshold: 0.2 });
+    carIO.observe(carTrack);
+  }
+</script>
+
+</body>
+</html>
